@@ -5,6 +5,7 @@
 #include <linux/device.h>
 #include <linux/gpio.h>
 #include <linux/init.h>
+#include <linux/minmax.h>
 #include <linux/module.h>
 #include <linux/printk.h>
 
@@ -18,10 +19,12 @@ static atomic_t counter = ATOMIC_INIT(0);
 
 static char msg[BUF_LEN + 1];
 
+static char cmd_buffer[CMD_LEN];
+
 static struct class *cls;
 
 static struct gpio led_gpio = {
-	.gpio  = 523,
+	.gpio  = 535,
 	.flags = GPIOF_OUT_INIT_LOW,
 	.label = "GREEN LED",
 };
@@ -105,8 +108,29 @@ static ssize_t on_read(struct file *file, char __user *buffer, size_t length,
 static ssize_t on_write(struct file *file, const char __user *buffer,
 			size_t length, loff_t *offset)
 {
-	pr_alert("Not implemented on write!\n");
-	return -1;
+	size_t length_to_write = min_t(size_t, length, CMD_LEN);
+
+	if (copy_from_user(cmd_buffer, buffer, length_to_write)) {
+		return -EFAULT;
+	}
+
+	switch (cmd_buffer[0]) {
+	case '0':
+		gpio_set_value(led_gpio.gpio, 0);
+		pr_info("Switched off LED\n");
+		break;
+	case '1':
+		gpio_set_value(led_gpio.gpio, 1);
+		pr_info("Switched on LED\n");
+		break;
+	default:
+		pr_warn("Unknown CMD %d\n", cmd_buffer[0]);
+		break;
+	}
+
+	*offset += length_to_write;
+
+	return length_to_write;
 }
 
 static int on_open(struct inode *inode, struct file *file)
