@@ -9,6 +9,9 @@
 #   https://clang.llvm.org/docs/ClangFormatStyleOptions.html
 #
 ---
+
+# Linux Kernel Rules
+
 AccessModifierOffset: -4
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: false
@@ -801,4 +804,11 @@ SpacesInSquareBrackets: false
 Standard: Cpp03
 TabWidth: 8
 UseTab: Always
+
+# My Rules
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+ReflowComments: true
+SortIncludes: true
+
 ...
