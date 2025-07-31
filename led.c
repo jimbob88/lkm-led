@@ -4,6 +4,9 @@
 #include <linux/atomic.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
+// This is the LEGACY GPIO bulk include file, including legacy APIs. It is
+// * used for GPIO drivers still referencing the global GPIO numberspace,
+// * and should not be included in new code.
 #include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/minmax.h>
