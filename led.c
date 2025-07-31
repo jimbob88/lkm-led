@@ -2,6 +2,7 @@
  * led.c - Trivial led on/off using an LKM.
  */
 #include <linux/atomic.h>
+#include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/gpio.h>
 #include <linux/init.h>
@@ -32,23 +33,41 @@ static struct file_operations counter_fops = {
 
 static int __init counter_init(void)
 {
+	int ret = 0;
+
 	pr_info("In the beginning...\n");
 
-	led_dev.major = register_chrdev(0, DEVICE_NAME, &counter_fops);
-
-	if (led_dev.major < 0) {
-		pr_alert("Registering device failed with %d\n", led_dev.major);
-		return led_dev.major;
+	if (led_dev.major) {
+		led_dev.dev_code = MKDEV(led_dev.major, led_dev.minor);
+		ret = register_chrdev_region(led_dev.dev_code, NUM_DEVICES,
+					     DEVICE_NAME);
+	} else {
+		ret = alloc_chrdev_region(&led_dev.dev_code, 0, NUM_DEVICES,
+					  DEVICE_NAME);
 	}
 
-	pr_info("Counter assigned major number %d.\n", led_dev.major);
+	if (ret < 0) {
+		pr_alert(
+			"Failed to get major/minor character allocation, error: %d\n",
+			ret);
+		return ret;
+	}
 
-	led_dev.cls	 = class_create(DEVICE_NAME);
-	led_dev.dev_code = MKDEV(led_dev.major, led_dev.minor);
+	pr_info("Major = %d, Minor = %d\n", MAJOR(led_dev.dev_code),
+		MINOR(led_dev.dev_code));
+
+	// Create one character device using the supplied major/minor
+	// allocations
+	cdev_init(&led_dev.cdev, &counter_fops);
+	ret = cdev_add(&led_dev.cdev, led_dev.dev_code, 1);
+	if (ret) {
+		pr_err("Failed to add device\n");
+		goto fail1;
+	}
+
+	led_dev.cls = class_create(DEVICE_NAME);
 	led_dev.dev = device_create(led_dev.cls, NULL, led_dev.dev_code, NULL,
 				    DEVICE_NAME);
-
-	pr_info("Major = %d, Minor = %d\n", MAJOR(led_dev.dev_code), MINOR(led_dev.dev_code));
 
 	pr_info("Device created on /dev/%s\n", DEVICE_NAME);
 
@@ -69,6 +88,11 @@ static int __init counter_init(void)
 	}
 
 	return 0;
+
+fail1:
+	unregister_chrdev_region(led_dev.dev_code, NUM_DEVICES);
+
+	return ret;
 }
 
 static void __exit counter_exit(void)

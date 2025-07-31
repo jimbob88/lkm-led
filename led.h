@@ -9,6 +9,7 @@ struct led_device {
 	dev_t	       dev_code;
 	struct class  *cls;
 	struct device *dev;
+	struct cdev    cdev;
 	atomic_t       device_status;
 	atomic_t       counter;
 	char	       msg[BUF_LEN + 1];
