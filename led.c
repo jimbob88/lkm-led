@@ -44,7 +44,7 @@ static int __init counter_init(void)
 	pr_info("Counter assigned major number %d.\n", led_dev.major);
 
 	led_dev.cls = class_create(DEVICE_NAME);
-	device_create(led_dev.cls, NULL, MKDEV(led_dev.major, 0), NULL,
+	device_create(led_dev.cls, NULL, MKDEV(led_dev.major, led_dev.minor), NULL,
 		      DEVICE_NAME);
 
 	pr_info("Device created on /dev/%s\n", DEVICE_NAME);
@@ -76,7 +76,7 @@ static void __exit counter_exit(void)
 	gpio_free(led_gpio.gpio);
 
 	// TODO: Move this to using a global dev num rather than tearing down
-	device_destroy(led_dev.cls, MKDEV(led_dev.major, 0));
+	device_destroy(led_dev.cls, MKDEV(led_dev.major, led_dev.minor));
 	class_destroy(led_dev.cls);
 	unregister_chrdev(led_dev.major, DEVICE_NAME);
 }

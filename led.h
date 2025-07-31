@@ -5,6 +5,7 @@
 
 struct led_device {
 	int	      major;
+	int           minor;
 	atomic_t      device_status;
 	struct class *cls;
 	atomic_t      counter;
