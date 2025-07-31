@@ -4,13 +4,15 @@
 #define CMD_LEN 2
 
 struct led_device {
-	int	      major;
-	int           minor;
-	atomic_t      device_status;
-	struct class *cls;
-	atomic_t      counter;
-	char	      msg[BUF_LEN + 1];
-	char	      cmd_buffer[CMD_LEN];
+	int	       major;
+	int	       minor;
+	dev_t	       dev_code;
+	struct class  *cls;
+	struct device *dev;
+	atomic_t       device_status;
+	atomic_t       counter;
+	char	       msg[BUF_LEN + 1];
+	char	       cmd_buffer[CMD_LEN];
 };
 
 enum {
