@@ -65,29 +65,51 @@ static int __init counter_init(void)
 		goto fail1;
 	}
 
+	// Creates a struct class pointer (to be filled in device_create)
 	led_dev.cls = class_create(DEVICE_NAME);
+	if (IS_ERR(led_dev.cls)) {
+		pr_err("Failed to create class for device\n");
+		ret = PTR_ERR(led_dev.cls);
+		goto fail2;
+	}
+
 	led_dev.dev = device_create(led_dev.cls, NULL, led_dev.dev_code, NULL,
 				    DEVICE_NAME);
+	if (IS_ERR(led_dev.dev)) {
+		pr_err("Failed to create the device file\n");
+		ret = PTR_ERR(led_dev.dev);
+		goto fail3;
+	}
 
 	pr_info("Device created on /dev/%s\n", DEVICE_NAME);
 
-	int gpio_request_ret = gpio_request(led_gpio.gpio, led_gpio.label);
+	ret = gpio_request(led_gpio.gpio, led_gpio.label);
 
-	if (gpio_request_ret) {
-		pr_err("GPIO Request failed with %d.\n", gpio_request_ret);
-		return gpio_request_ret;
+	if (ret) {
+		pr_err("GPIO Request failed with %d.\n", ret);
+		goto fail4;
 	}
 
-	int gpio_direction_ret =
-		gpio_direction_output(led_gpio.gpio, led_gpio.flags);
+	ret = gpio_direction_output(led_gpio.gpio, led_gpio.flags);
 
-	if (gpio_direction_ret) {
-		pr_err("GPIO flags configuration failed with %d.\n",
-		       gpio_direction_ret);
-		return gpio_direction_ret;
+	if (ret) {
+		pr_err("GPIO flags configuration failed with %d.\n", ret);
+		goto fail5;
 	}
 
 	return 0;
+
+fail5:
+	gpio_free(led_gpio.gpio);
+
+fail4:
+	device_destroy(led_dev.cls, led_dev.dev_code);
+
+fail3:
+	class_destroy(led_dev.cls);
+
+fail2:
+	cdev_del(&led_dev.cdev);
 
 fail1:
 	unregister_chrdev_region(led_dev.dev_code, NUM_DEVICES);
