@@ -3,6 +3,15 @@
 #define BUF_LEN 80
 #define CMD_LEN 2
 
+struct led_device {
+	int	      major;
+	atomic_t      device_status;
+	struct class *cls;
+	atomic_t      counter;
+	char	      msg[BUF_LEN + 1];
+	char	      cmd_buffer[CMD_LEN];
+};
+
 enum {
 	DEVICE_FREE,
 	DEVICE_BOUND,

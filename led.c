@@ -11,17 +11,10 @@
 
 #include "led.h"
 
-static int major;
-
-static atomic_t device_status = ATOMIC_INIT(DEVICE_FREE);
-
-static atomic_t counter = ATOMIC_INIT(0);
-
-static char msg[BUF_LEN + 1];
-
-static char cmd_buffer[CMD_LEN];
-
-static struct class *cls;
+static struct led_device led_dev = {
+	.device_status = ATOMIC_INIT(DEVICE_FREE),
+	.counter       = ATOMIC_INIT(0),
+};
 
 static struct gpio led_gpio = {
 	.gpio  = 535,
@@ -41,17 +34,18 @@ static int __init counter_init(void)
 {
 	pr_info("In the beginning...\n");
 
-	major = register_chrdev(0, DEVICE_NAME, &counter_fops);
+	led_dev.major = register_chrdev(0, DEVICE_NAME, &counter_fops);
 
-	if (major < 0) {
-		pr_alert("Registering device failed with %d\n", major);
-		return major;
+	if (led_dev.major < 0) {
+		pr_alert("Registering device failed with %d\n", led_dev.major);
+		return led_dev.major;
 	}
 
-	pr_info("Counter assigned major number %d.\n", major);
+	pr_info("Counter assigned major number %d.\n", led_dev.major);
 
-	cls = class_create(DEVICE_NAME);
-	device_create(cls, NULL, MKDEV(major, 0), NULL, DEVICE_NAME);
+	led_dev.cls = class_create(DEVICE_NAME);
+	device_create(led_dev.cls, NULL, MKDEV(led_dev.major, 0), NULL,
+		      DEVICE_NAME);
 
 	pr_info("Device created on /dev/%s\n", DEVICE_NAME);
 
@@ -81,21 +75,22 @@ static void __exit counter_exit(void)
 	gpio_set_value(led_gpio.gpio, 0);
 	gpio_free(led_gpio.gpio);
 
-	device_destroy(cls, MKDEV(major, 0));
-	class_destroy(cls);
-	unregister_chrdev(major, DEVICE_NAME);
+	// TODO: Move this to using a global dev num rather than tearing down
+	device_destroy(led_dev.cls, MKDEV(led_dev.major, 0));
+	class_destroy(led_dev.cls);
+	unregister_chrdev(led_dev.major, DEVICE_NAME);
 }
 
 static ssize_t on_read(struct file *file, char __user *buffer, size_t length,
 		       loff_t *offset)
 {
-	size_t length_of_msg = strlen(msg);
+	size_t length_of_msg = strlen(led_dev.msg);
 
 	if (*offset >= length_of_msg) {
 		return 0;
 	}
 
-	if (copy_to_user(buffer, msg, length_of_msg)) {
+	if (copy_to_user(buffer, led_dev.msg, length_of_msg)) {
 		// Failed to copy the entire message to the buffer.
 		return -EFAULT;
 	}
@@ -110,11 +105,11 @@ static ssize_t on_write(struct file *file, const char __user *buffer,
 {
 	size_t length_to_write = min_t(size_t, length, CMD_LEN);
 
-	if (copy_from_user(cmd_buffer, buffer, length_to_write)) {
+	if (copy_from_user(led_dev.cmd_buffer, buffer, length_to_write)) {
 		return -EFAULT;
 	}
 
-	switch (cmd_buffer[0]) {
+	switch (led_dev.cmd_buffer[0]) {
 	case '0':
 		gpio_set_value(led_gpio.gpio, 0);
 		pr_info("Switched off LED\n");
@@ -124,7 +119,7 @@ static ssize_t on_write(struct file *file, const char __user *buffer,
 		pr_info("Switched on LED\n");
 		break;
 	default:
-		pr_warn("Unknown CMD %d\n", cmd_buffer[0]);
+		pr_warn("Unknown CMD %d\n", led_dev.cmd_buffer[0]);
 		break;
 	}
 
@@ -135,21 +130,22 @@ static ssize_t on_write(struct file *file, const char __user *buffer,
 
 static int on_open(struct inode *inode, struct file *file)
 {
-	if (atomic_cmpxchg(&device_status, DEVICE_FREE, DEVICE_BOUND)) {
+	if (atomic_cmpxchg(&led_dev.device_status, DEVICE_FREE, DEVICE_BOUND)) {
 		pr_debug("Device already bound, busy, failed to open!\n");
 		return -EBUSY;
 	}
 
-	atomic_inc(&counter);
-	sprintf(msg, "I have been read %d times.\n", atomic_read(&counter));
-	pr_info("%s", msg);
+	atomic_inc(&led_dev.counter);
+	sprintf(led_dev.msg, "I have been read %d times.\n",
+		atomic_read(&led_dev.counter));
+	pr_info("%s", led_dev.msg);
 
 	return 0;
 }
 
 static int on_release(struct inode *inode, struct file *file)
 {
-	atomic_set(&device_status, DEVICE_FREE);
+	atomic_set(&led_dev.device_status, DEVICE_FREE);
 	return 0;
 }
 
