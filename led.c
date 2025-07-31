@@ -48,6 +48,8 @@ static int __init counter_init(void)
 	led_dev.dev = device_create(led_dev.cls, NULL, led_dev.dev_code, NULL,
 				    DEVICE_NAME);
 
+	pr_info("Major = %d, Minor = %d\n", MAJOR(led_dev.dev_code), MINOR(led_dev.dev_code));
+
 	pr_info("Device created on /dev/%s\n", DEVICE_NAME);
 
 	int gpio_request_ret = gpio_request(led_gpio.gpio, led_gpio.label);
