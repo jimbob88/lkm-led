@@ -1,3 +1,6 @@
+#include <linux/cdev.h>
+#include <linux/device.h>
+
 #define DEVICE_NAME "jimbob_led"
 #define NUM_DEVICES 1
 #define BUF_LEN 80

@@ -1,5 +1,5 @@
 /*
- * led.c - Trivial led on/off using an LKM.
+ * led.c - Trivial led on/off using an LKM inspired by lkmpg's led.c.
  */
 #include <linux/atomic.h>
 #include <linux/cdev.h>
